@@ -31,12 +31,12 @@ async function processAllBooks(booksUrls) {
 
 }
 
-async function getBookDetails() {
+async function getBookDetails(url) {
 
 }
 
 async function saveBookDetails() {
-
+//TODO doublon
 }
 
 async function getNumberOfPages() {

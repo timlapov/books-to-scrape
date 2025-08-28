@@ -7,7 +7,6 @@
     "@types/bun": "latest"
   },
   "dependencies": {
-    "jsdom": "^26.1.0",
-    "sqlite3": "^5.1.7"
+    "jsdom": "^26.1.0"
   }
 }

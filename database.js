@@ -1,13 +1,14 @@
-import sqlite from 'sqlite3';
+import { Database } from "bun:sqlite";
 
-const db = new sqlite.Database('books.db');
+const db = new Database('books.db', { create: true });
 
 createTable();
 
 export function createTable() {
-    const createTableQuery = `
+    const createTableQuery = db.query(`
     CREATE TABLE IF NOT EXISTS books (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sourceLink TEXT NOT NULL,
         title TEXT NOT NULL,
         description TEXT,
         rating INTEGER,
@@ -17,7 +18,7 @@ export function createTable() {
         upc TEXT NOT NULL,
         photoUrl TEXT
     )
-`;
-    db.exec(createTableQuery);
+`);
+    createTableQuery.run();
     console.log('The books table has been successfully created');
 }
