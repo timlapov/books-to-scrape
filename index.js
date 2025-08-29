@@ -12,6 +12,6 @@ console.log("********* Hello *********");
 createTable();
 
 // Scraping
-scrape().then(r => console.log(r));
+scrape();
 
 

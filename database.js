@@ -50,9 +50,8 @@ export function insertBook(book) {
 
 export function bookAlreadyExists(book) {
     const selectQuery = db.query(`
-    SELECT * FROM books WHERE upc = upc
+    SELECT * FROM books WHERE upc = $upc
     `);
-    const result = selectQuery.run({upc: book.upc});
-    console.log(result);
+    const result = selectQuery.all({$upc: book.upc});
     return result.length > 0;
 }

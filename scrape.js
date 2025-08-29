@@ -1,6 +1,7 @@
 import {createBook} from "./Book.js";
 import {insertBook} from "./database.js";
 import {bookToDbObject} from "./Book.js";
+import {bookAlreadyExists} from "./database.js";
 import { JSDOM } from "jsdom";
 import * as readline from "node:readline";
 //
@@ -35,6 +36,7 @@ async function processBooks(urls) {
     const total = urls.length;
     let getBookDetailsCounter = 0;
     let savedBooksCounter = 0;
+    let doublesCounter = 0;
 
     for (let i = 0; i < urls.length; i++) {
         const url = urls[i];
@@ -47,12 +49,18 @@ async function processBooks(urls) {
             console.error(`URL: ${url} | Error getting book details: `, error);
             continue;
         }
-        try {
-            await saveBookDetails(book);
-            savedBooksCounter++;
-        } catch (error) {
-            console.error(`URL: ${url} | Error saving book details: `, error);
-            continue;
+
+        if (!bookAlreadyExists(book)) {
+            try {
+                await saveBookDetails(book);
+                savedBooksCounter++;
+            } catch (error) {
+                console.error(`URL: ${url} | Error saving book details: `, error);
+                continue;
+            }
+        } else {
+            doublesCounter++;
+            //console.log(`URL: ${url} | Book already exists in the database`); //TODO
         }
 
         const current = i + 1;
@@ -66,7 +74,7 @@ async function processBooks(urls) {
         process.stdout.write(textLine);
     }
 
-    console.log(`\nOf ${urls.length} books received: ${getBookDetailsCounter} books, saved to db: ${savedBooksCounter}`);
+    console.log(`\nOf ${urls.length} books received: ${getBookDetailsCounter} books, doubles: ${doublesCounter}, saved to db: ${savedBooksCounter}`);
 }
 
 async function getBookDetails(url) {
