@@ -1,55 +1,72 @@
 import {createBook} from "./Book.js";
 import {insertBook} from "./database.js";
 import {bookToDbObject} from "./Book.js";
-
-const jsdom = require("jsdom");
-const url = require("node:url");
-const { JSDOM } = jsdom;
+import { JSDOM } from "jsdom";
+import * as readline from "node:readline";
+//
+// const url = require("node:url");
 
 const baseUrl = "https://books.toscrape.com/catalogue/";
-
 let booksUrls = [];
+let numberOfPages;
 
-const testBook = createBook({
-    title: "test",
-    sourceLink: "google.com",
-    description: "testTESTtest",
-    rating: 5,
-    priceWithTax: 10,
-    priceWithoutTax: 10,
-    inStock: 10,
-    upc: "1234567890",
-    photoUrl: "https://books.toscrape.com/media/catalog/product/cache/700x525/9df78eab33525d08d6e5fb8d27136e95/b/o/book_cover_placeholder_large.jpg"
-});
-const testBookUrl = "https://books.toscrape.com/catalogue/soumission_998/index.html";
-
-console.log('Scraping started...');
+export async function scrape() {
+    console.log('Scraping started...');
 
 // Get the number of pages and save it as a constant
-console.log("Getting the number of pages...");
-const NUMBER_OF_PAGES = await getNumberOfPages();
-console.log("Total pages: ", NUMBER_OF_PAGES);
+    console.log("Getting the number of pages...");
+    numberOfPages = await getNumberOfPages();
+    console.log("Total pages: ", numberOfPages);
 
 //Get links to the book's webpage
-console.log("Getting book urls...");
-//booksUrls = await getBooksUrls();
-console.log("Total books: ", booksUrls.length);
+    console.log("Getting book urls...");
+    booksUrls = await getBooksUrls();
+    console.log("\nTotal books: ", booksUrls.length);
+
+// Get book details and save them to the database Sqlite
+    console.log("Getting and saving book details...");
+    await processBooks(booksUrls);
+
+    console.log("Scraping finished!");
+}
 
 
-console.log("Getting book details...");
-console.log(await getBookDetails(testBookUrl));
+async function processBooks(urls) {
+    const total = urls.length;
+    let getBookDetailsCounter = 0;
+    let savedBooksCounter = 0;
 
+    for (let i = 0; i < urls.length; i++) {
+        const url = urls[i];
+        let book;
 
-console.log("Saving book details...");
+        try {
+            book = await getBookDetails(url);
+            getBookDetailsCounter++;
+        } catch (error) {
+            console.error(`URL: ${url} | Error getting book details: `, error);
+            continue;
+        }
+        try {
+            await saveBookDetails(book);
+            savedBooksCounter++;
+        } catch (error) {
+            console.error(`URL: ${url} | Error saving book details: `, error);
+            continue;
+        }
 
+        const current = i + 1;
+        const progress = current / total;
+        const barLength = 40;
+        const filledLength = Math.round(barLength * progress);
+        const bar = '█'.repeat(filledLength) + '░'.repeat(barLength - filledLength);
+        const textLine = `[${bar}] ${current}/${total} (${Math.round(progress * 100)}%)`;
+        readline.clearLine(process.stdout, 0);
+        readline.cursorTo(process.stdout, 0);
+        process.stdout.write(textLine);
+    }
 
-//saveBookDetails(testBook);
-//console.log(await getPageHTML(baseUrl + `page-1.html`));
-//console.log(await getNumberOfPages())
-//console.log(await getBooksUrls());
-
-async function processAllBooks(booksUrls) {
-
+    console.log(`\nOf ${urls.length} books received: ${getBookDetailsCounter} books, saved to db: ${savedBooksCounter}`);
 }
 
 async function getBookDetails(url) {
@@ -57,15 +74,20 @@ async function getBookDetails(url) {
     const dom = new JSDOM(bookPageHTML);
 
     return createBook({
-        title: dom.window.document.querySelector('h1').textContent,
+        title: dom.window.document.querySelector('h1').textContent || '',
         sourceLink: url,
-        description: dom.window.document.querySelector('article.product_page > p').textContent,
-        rating: -1, //TODO
-        priceWithTax: parseFloat(dom.window.document.querySelector('table tr:nth-child(4) td')?.textContent?.trim().slice(1)),
-        priceWithoutTax: parseFloat(dom.window.document.querySelector('table tr:nth-child(3) td')?.textContent?.trim().slice(1)),
+        description: dom.window.document.querySelector('#product_description + p')?.textContent?.trim() || '',
+        rating: (() => {
+            const ratingElement = dom.window.document.querySelector('.star-rating');
+            if (!ratingElement) return 0;
+            const ratingClass = ratingElement.className.split(' ')[1];
+            return ['Zero', 'One', 'Two', 'Three', 'Four', 'Five'].indexOf(ratingClass) || -1;
+        })(),
+        priceWithTax: parseFloat(dom.window.document.querySelector('table tr:nth-child(4) td')?.textContent?.trim().slice(1)) || -1,
+        priceWithoutTax: parseFloat(dom.window.document.querySelector('table tr:nth-child(3) td')?.textContent?.trim().slice(1)) || -1,
         inStock: parseInt(dom.window.document.querySelector('table tr:nth-child(6) td')?.textContent?.slice(10, 12)) || 0,
-        upc: dom.window.document.querySelector('table tr:nth-child(1) td')?.textContent?.trim(),
-        photoUrl: baseUrl.slice(0, 27) + dom.window.document.querySelector('#product_gallery.carousel img').src.slice(6)
+        upc: dom.window.document.querySelector('table tr:nth-child(1) td')?.textContent?.trim() || '',
+        photoUrl: baseUrl.slice(0, 27) + dom.window.document.querySelector('#product_gallery.carousel img').src.slice(6) || ''
     });
 }
 
@@ -84,14 +106,20 @@ async function getNumberOfPages() {
 
 async function getBooksUrls() {
     let urls = [];
-    for (let i = 1; i <= NUMBER_OF_PAGES; i++) {
+    for (let i = 1; i <= numberOfPages; i++) {
         const pageUrl = baseUrl + `page-${i}.html`;
         const html = await getPageHTML(pageUrl);
         const dom = new JSDOM(html);
-
-        // const url = dom.window.document.querySelector('article.product_pod a').href;
-        // console.log(url);
         urls.push([...dom.window.document.querySelectorAll('article.product_pod h3 a')].map(a => a.href));
+
+        const progress = i / numberOfPages;
+        const barLength = 40;
+        const filledLength = Math.round(barLength * progress);
+        const bar = '█'.repeat(filledLength) + '░'.repeat(barLength - filledLength);
+        const textLine = `[${bar}] (${Math.round(progress * 100)}%)`;
+        readline.clearLine(process.stdout, 0);
+        readline.cursorTo(process.stdout, 0);
+        process.stdout.write(textLine);
     }
     return urls.flat().map(url => baseUrl + url);
 }

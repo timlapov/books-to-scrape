@@ -1,4 +1,5 @@
 import {createTable} from "./database.js";
+import {scrape} from "./scrape.js";
 
 console.log("********* Hello *********");
 // console.log(`
@@ -7,6 +8,10 @@ console.log("********* Hello *********");
 // 3. Afficher les statistiques
 // `)
 
+// Create a database if not exists
 createTable();
+
+// Scraping
+scrape().then(r => console.log(r));
 
 

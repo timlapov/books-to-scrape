@@ -2,8 +2,6 @@ import { Database } from "bun:sqlite";
 
 const db = new Database('books.db', { create: true });
 
-createTable();
-
 export function createTable() {
     const createTableQuery = db.query(`
     CREATE TABLE IF NOT EXISTS books (
@@ -48,4 +46,13 @@ export function insertBook(book) {
     } catch (error) {
         console.error('Error inserting book: ', error); // TODO Log the error
     }
+}
+
+export function bookAlreadyExists(book) {
+    const selectQuery = db.query(`
+    SELECT * FROM books WHERE upc = upc
+    `);
+    const result = selectQuery.run({upc: book.upc});
+    console.log(result);
+    return result.length > 0;
 }
