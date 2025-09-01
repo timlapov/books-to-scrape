@@ -39,7 +39,7 @@ export async function scrape() {
             console.log(`Attempt ${i + 1} of 3`);
             await processBooks(booksUrlsWithErrors);
             console.log(`Waiting ${i} minutes before the next attempt...`);
-            await new Promise(resolve => setTimeout(resolve, i *60000));
+            await Bun.sleep(i * 60 * 1000); // FOR PRESENTATION
         }
     }
 
@@ -100,7 +100,7 @@ async function processBooks(urls) {
         process.stdout.write(textLine);
     }
 
-    console.log(`\nOf ${urls.length} books received: ${getBookDetailsCounter} books, doubles: ${doublesCounter}, saved to db: ${savedBooksCounter}, errors: ${booksUrlsWithErrors.length}`);
+    console.log(`\nOf ${urls.length} books received: ${getBookDetailsCounter} books, doubles: ${doublesCounter}, errors: ${booksUrlsWithErrors.length}, saved to db: ${savedBooksCounter}`);
 
     savedBooksCounterForReport += savedBooksCounter;
     bookDetailsCounterForReport += getBookDetailsCounter;

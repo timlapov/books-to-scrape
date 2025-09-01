@@ -27,6 +27,16 @@ export async function createTable() {
     }
 }
 
+export async function deleteDatabaseFile() {
+    try {
+        await Bun.file('books.db').delete();
+        console.log('Database file deleted successfully');
+    } catch (error) {
+        console.error('Error deleting database file: ', error);
+        await logErrorToFile('Error deleting database file: ', error);
+    }
+}
+
 
 export async function insertBook(book) {
     const insertQuery = db.query(`
