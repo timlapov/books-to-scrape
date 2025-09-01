@@ -1,8 +1,9 @@
 import { Database } from "bun:sqlite";
+import {logErrorToFile} from "./reports.js";
 
 const db = new Database('books.db', { create: true });
 
-export function createTable() {
+export async function createTable() {
     const createTableQuery = db.query(`
     CREATE TABLE IF NOT EXISTS books (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -22,11 +23,12 @@ export function createTable() {
         console.log('The books table has been successfully created');
     } catch (error) {
         console.error('Error creating the books table: ', error);
+        await logErrorToFile('Error creating the books table: ', error);
     }
 }
 
 
-export function insertBook(book) {
+export async function insertBook(book) {
     const insertQuery = db.query(`
     INSERT INTO books (title, source_link, description, rating, price_with_tax, price_without_tax, in_stock, upc, photoUrl)
     VALUES ($title, $source_link, $description, $rating, $price_with_tax, $price_without_tax, $in_stock, $upc, $photoUrl)
@@ -44,7 +46,8 @@ export function insertBook(book) {
             $photoUrl: book.photoUrl
         });
     } catch (error) {
-        console.error('Error inserting book: ', error); // TODO Log the error
+        console.error('Error inserting book: ', error);
+        await logErrorToFile('Error inserting book: ', error);
     }
 }
 

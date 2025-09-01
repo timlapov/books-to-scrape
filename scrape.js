@@ -2,14 +2,18 @@ import {createBook} from "./Book.js";
 import {insertBook} from "./database.js";
 import {bookToDbObject} from "./Book.js";
 import {bookAlreadyExists} from "./database.js";
+import {logErrorToFile, writeReportToFile} from "./reports.js";
 import { JSDOM } from "jsdom";
 import * as readline from "node:readline";
-//
-// const url = require("node:url");
 
 const baseUrl = "https://books.toscrape.com/catalogue/";
 let booksUrls = [];
+let booksUrlsWithErrors = [];
 let numberOfPages;
+
+// For report
+let bookDetailsCounterForReport = 0;
+let savedBooksCounterForReport = 0;
 
 export async function scrape() {
     console.log('Scraping started...');
@@ -27,6 +31,24 @@ export async function scrape() {
 // Get book details and save them to the database Sqlite
     console.log("Getting and saving book details...");
     await processBooks(booksUrls);
+
+    // If there are errors, try to get the data again
+    if (booksUrlsWithErrors.length > 0) {
+        console.log(`${booksUrlsWithErrors.length} errors occurred during the process. We'll make three attempts to get the data.`);
+        for (let i = 0; i < 3; i++) {
+            console.log(`Attempt ${i + 1} of 3`);
+            await processBooks(booksUrlsWithErrors);
+            console.log(`Waiting ${i} minutes before the next attempt...`);
+            await new Promise(resolve => setTimeout(resolve, i *60000));
+        }
+    }
+
+    // Save and show the final report
+    console.log("Saving report...");
+    await writeReportToFile(`\nOf ${booksUrls.length} books received: ${bookDetailsCounterForReport} books, saved to db: ${savedBooksCounterForReport}`);
+    console.log(`********** FINAL REPORT  **********
+    \nOf ${booksUrls.length} books received: ${bookDetailsCounterForReport} books, saved to db: ${savedBooksCounterForReport}`
+    );
 
     console.log("Scraping finished!");
 }
@@ -47,6 +69,8 @@ async function processBooks(urls) {
             getBookDetailsCounter++;
         } catch (error) {
             console.error(`URL: ${url} | Error getting book details: `, error);
+            await logErrorToFile(`URL: ${url} | Error getting book details: `, error);
+            booksUrlsWithErrors.push(url);
             continue;
         }
 
@@ -56,11 +80,13 @@ async function processBooks(urls) {
                 savedBooksCounter++;
             } catch (error) {
                 console.error(`URL: ${url} | Error saving book details: `, error);
+                await logErrorToFile(`URL: ${url} | Error saving book details: `, error);
                 continue;
             }
         } else {
             doublesCounter++;
-            //console.log(`URL: ${url} | Book already exists in the database`); //TODO
+            console.log(`URL: ${url} | Book already exists in the database`);
+            await logErrorToFile(`URL: ${url} | Book already exists in the database`);
         }
 
         const current = i + 1;
@@ -74,8 +100,12 @@ async function processBooks(urls) {
         process.stdout.write(textLine);
     }
 
-    console.log(`\nOf ${urls.length} books received: ${getBookDetailsCounter} books, doubles: ${doublesCounter}, saved to db: ${savedBooksCounter}`);
+    console.log(`\nOf ${urls.length} books received: ${getBookDetailsCounter} books, doubles: ${doublesCounter}, saved to db: ${savedBooksCounter}, errors: ${booksUrlsWithErrors.length}`);
+
+    savedBooksCounterForReport += savedBooksCounter;
+    bookDetailsCounterForReport += getBookDetailsCounter;
 }
+
 
 async function getBookDetails(url) {
     const bookPageHTML = await getPageHTML(url);
@@ -100,9 +130,8 @@ async function getBookDetails(url) {
 }
 
 async function saveBookDetails(book) {
-//TODO doublons
     const dbObject = bookToDbObject(book);
-    insertBook(dbObject);
+    insertBook(dbObject); // QUESTION
 }
 
 async function getNumberOfPages() {
@@ -146,6 +175,7 @@ async function getPageHTML(url) {
 
     } catch (error) {
         console.error('Error when requesting a page: ', error);
+        await logErrorToFile('Error when requesting a page: ', error);
         throw error;
     }
 }
