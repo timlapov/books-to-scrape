@@ -45,7 +45,7 @@ export async function scrape() {
 
     // Save and show the final report
     console.log("Saving report...");
-    await writeReportToFile(`\nOf ${booksUrls.length} books received: ${bookDetailsCounterForReport} books, saved to db: ${savedBooksCounterForReport}`);
+    await writeReportToFile(`Of ${booksUrls.length} books received: ${bookDetailsCounterForReport} books, saved to db: ${savedBooksCounterForReport}`);
     console.log(`********** FINAL REPORT  **********
     \nOf ${booksUrls.length} books received: ${bookDetailsCounterForReport} books, saved to db: ${savedBooksCounterForReport}`
     );
@@ -90,14 +90,7 @@ async function processBooks(urls) {
         }
 
         const current = i + 1;
-        const progress = current / total;
-        const barLength = 40;
-        const filledLength = Math.round(barLength * progress);
-        const bar = '█'.repeat(filledLength) + '░'.repeat(barLength - filledLength);
-        const textLine = `[${bar}] ${current}/${total} (${Math.round(progress * 100)}%)`;
-        readline.clearLine(process.stdout, 0);
-        readline.cursorTo(process.stdout, 0);
-        process.stdout.write(textLine);
+        updateProgress(current, total);
     }
 
     console.log(`\nOf ${urls.length} books received: ${getBookDetailsCounter} books, doubles: ${doublesCounter}, errors: ${booksUrlsWithErrors.length}, saved to db: ${savedBooksCounter}`);
@@ -131,7 +124,7 @@ async function getBookDetails(url) {
 
 async function saveBookDetails(book) {
     const dbObject = bookToDbObject(book);
-    insertBook(dbObject); // QUESTION
+    await insertBook(dbObject); // QUESTION
 }
 
 async function getNumberOfPages() {
@@ -149,14 +142,7 @@ async function getBooksUrls() {
         const dom = new JSDOM(html);
         urls.push([...dom.window.document.querySelectorAll('article.product_pod h3 a')].map(a => a.href));
 
-        const progress = i / numberOfPages;
-        const barLength = 40;
-        const filledLength = Math.round(barLength * progress);
-        const bar = '█'.repeat(filledLength) + '░'.repeat(barLength - filledLength);
-        const textLine = `[${bar}] (${Math.round(progress * 100)}%)`;
-        readline.clearLine(process.stdout, 0);
-        readline.cursorTo(process.stdout, 0);
-        process.stdout.write(textLine);
+        updateProgress(i, numberOfPages);
     }
     return urls.flat().map(url => baseUrl + url);
 }
@@ -178,4 +164,15 @@ async function getPageHTML(url) {
         await logErrorToFile('Error when requesting a page: ', error);
         throw error;
     }
+}
+
+function updateProgress(current, total) {
+    const progress = current / total;
+    const barLength = 40;
+    const filledLength = Math.round(barLength * progress);
+    const bar = '🟩'.repeat(filledLength) + '⬜️'.repeat(barLength - filledLength);
+    const textLine = `${bar} ${current}/${total} (${Math.round(progress * 100)}%)`;
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    process.stdout.write(textLine);
 }

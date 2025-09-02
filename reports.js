@@ -1,3 +1,5 @@
+import {getTotalBooks, getAveragePrice, getBooksInStock} from "./database.js";
+
 let writer;
 
 export async function logErrorToFile(message, error = "") {
@@ -13,7 +15,24 @@ export async function logErrorToFile(message, error = "") {
 export async function writeReportToFile(message) {
     const timestamp = new Date().toISOString();
     const file = Bun.file(`report.log`);
-    await file.write(message);
+    const totalBooksInDb = await getTotalBooks();
+    const averagePrice = await getAveragePrice();
+    const booksInStock = await getBooksInStock();
+
+    console.log(totalBooksInDb);
+    console.log(averagePrice);
+    console.log(booksInStock);
+
+    await file.write(`
+        Report generated at ${timestamp}
+        ${message}
+        
+        Dataset overview statistics:    
+        - Total books in the database:  ${totalBooksInDb}
+        - Average price (with tax):     ${averagePrice}
+        - Total books in stock:         ${booksInStock}
+        
+    `);
 }
 
 export async function showReport() {

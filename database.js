@@ -68,3 +68,24 @@ export function bookAlreadyExists(book) {
     const result = selectQuery.all({$upc: book.upc});
     return result.length > 0;
 }
+
+export async function getTotalBooks() {
+    const selectQuery = db.query(`
+    SELECT COUNT(*) as total_books FROM books
+    `);
+    return selectQuery.all()[0].total_books;
+}
+
+export async function getAveragePrice() {
+    const selectQuery = db.query(`
+    SELECT AVG(price_with_tax) as average_price FROM books
+    `);
+    return selectQuery.all()[0].average_price;
+}
+
+export async function getBooksInStock() {
+    const selectQuery = db.query(`
+    SELECT SUM(in_stock) as books_in_stock FROM books
+    `);
+    return selectQuery.all()[0].books_in_stock;
+}

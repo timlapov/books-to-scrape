@@ -14,7 +14,7 @@ const prompt =`
 
 process.stdout.write(prompt);
 for await (const line of console) {
-    console.log(`You  chose ${line}. Operation in progress...`);
+    console.log(`You chose ${line}. Operation in progress...`);
     switch (line) {
         case '1':
             await createTable();
@@ -29,6 +29,7 @@ for await (const line of console) {
             await deleteDatabaseFile();
             break;
         case '0':
+            console.log('🌞 Have a nice day!');
             process.exit(0);
         default:
             console.log('Wrong input');
