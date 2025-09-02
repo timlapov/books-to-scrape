@@ -15,9 +15,9 @@ export async function logErrorToFile(message, error = "") {
 export async function writeReportToFile(message) {
     const timestamp = new Date().toISOString();
     const file = Bun.file(`report.log`);
-    const totalBooksInDb = await getTotalBooks();
-    const averagePrice = await getAveragePrice();
-    const booksInStock = await getBooksInStock();
+    const totalBooksInDb = getTotalBooks();
+    const averagePrice = getAveragePrice();
+    const booksInStock = getBooksInStock();
 
     console.log(totalBooksInDb);
     console.log(averagePrice);
