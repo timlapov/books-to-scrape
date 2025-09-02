@@ -35,20 +35,24 @@ export async function scrape() {
     // If there are errors, try to get the data again
     if (booksUrlsWithErrors.length > 0) {
         console.log(`${booksUrlsWithErrors.length} errors occurred during the process. We'll make three attempts to get the data.`);
-        for (let i = 0; i < 3; i++) {
-            console.log(`Attempt ${i + 1} of 3`);
-            await processBooks(booksUrlsWithErrors);
+        for (let i = 1; i < 4; i++) {
+            if (booksUrlsWithErrors.length === 0) {
+                console.log("All errors resolved!");
+                break;
+            }
+            const urlsToRetry = [ ...booksUrlsWithErrors]
+            booksUrlsWithErrors = [];
+            console.log(`Attempt ${i} of 3`);
+            await processBooks(urlsToRetry);
             console.log(`Waiting ${i} minutes before the next attempt...`);
             await Bun.sleep(i * 60 * 1000); // FOR PRESENTATION
         }
     }
 
     // Save and show the final report
-    console.log("Saving report...");
+    console.log("⏳ Saving report...");
     await writeReportToFile(`Of ${booksUrls.length} books received: ${bookDetailsCounterForReport} books, saved to db: ${savedBooksCounterForReport}`);
-    console.log(`********** FINAL REPORT  **********
-    \nOf ${booksUrls.length} books received: ${bookDetailsCounterForReport} books, saved to db: ${savedBooksCounterForReport}`
-    );
+    console.log(` ✅Report saved to report.log `);
 
     console.log("Scraping finished!");
 }
@@ -116,7 +120,7 @@ async function getBookDetails(url) {
         })(),
         priceWithTax: parseFloat(dom.window.document.querySelector('table tr:nth-child(4) td')?.textContent?.trim().slice(1)) || -1,
         priceWithoutTax: parseFloat(dom.window.document.querySelector('table tr:nth-child(3) td')?.textContent?.trim().slice(1)) || -1,
-        inStock: parseInt(dom.window.document.querySelector('table tr:nth-child(6) td')?.textContent?.slice(10, 12)) || 0,
+        inStock: parseInt(dom.window.document.querySelector('table tr:nth-child(6) td')?.textContent?.slice(10, 12)) || -1,
         upc: dom.window.document.querySelector('table tr:nth-child(1) td')?.textContent?.trim() || '',
         photoUrl: baseUrl.slice(0, 27) + dom.window.document.querySelector('#product_gallery.carousel img').src.slice(6) || ''
     });
@@ -149,7 +153,12 @@ async function getBooksUrls() {
 
 async function getPageHTML(url) {
     try {
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            signal: AbortSignal.timeout(5000),
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
+            }
+        });
 
         // Check if the request was successful
         if (!response.ok) {
@@ -160,8 +169,15 @@ async function getPageHTML(url) {
         return await response.text();
 
     } catch (error) {
-        console.error('Error when requesting a page: ', error);
-        await logErrorToFile('Error when requesting a page: ', error);
+        if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+            console.error(`Timeout (5s) for URL: ${url}`);
+            await logErrorToFile(`Timeout (5s) for URL: ${url}`, error);
+            await Bun.sleep(1000);
+        } else {
+            console.error('Error when requesting a page: ', error);
+            await logErrorToFile('Error when requesting a page: ', error);
+            await Bun.sleep(1000);
+        }
         throw error;
     }
 }
