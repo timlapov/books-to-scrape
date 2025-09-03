@@ -40,12 +40,12 @@ export async function scrape() {
                 console.log("All errors resolved!");
                 break;
             }
+            console.log(`Attempt ${i} of 3`);
+            console.log(`Waiting ${i-1} minutes...`);
+            await Bun.sleep((i-1) * 60 * 1000);
             const urlsToRetry = [ ...booksUrlsWithErrors]
             booksUrlsWithErrors = [];
-            console.log(`Attempt ${i} of 3`);
             await processBooks(urlsToRetry);
-            console.log(`Waiting ${i} minutes before the next attempt...`);
-            await Bun.sleep(i * 60 * 1000); // FOR PRESENTATION
         }
     }
 

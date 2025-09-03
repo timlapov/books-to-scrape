@@ -253,7 +253,7 @@ Before saving each book:
 The scraper implements intelligent error recovery:
 - **First Pass**: Process all URLs, collect failures
 - **Retry Attempts**: Up to 3 additional passes for failed URLs
-- **Progressive Delays**: Waits 1, 2, 3 minutes between retries
+- **Progressive Delays**: Waits 0, 1, 2 minutes between retries
 - **Error Tracking**: Maintains detailed error logs with timestamps
 
 #### 6. **Progress Visualization**
